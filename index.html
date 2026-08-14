@@ -1,0 +1,968 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#0a0a0f">
+<title>Kiro Flash V1</title>
+<style>
+/* ================= 基础 ================= */
+:root{
+  --bg1:#0a0a0f;
+  --bg2:#14141f;
+  --text:#f0f0f0;
+  --text2:#e5e7eb;
+  --muted:#8b8b98;
+  --purple:#a78bfa;
+  --gold:#fbbf24;
+  --orange:#f59e0b;
+  --red:#f87171;
+  --btn:linear-gradient(135deg,#6366f1,#8b5cf6);
+  --border:rgba(255,255,255,.08);
+  --mono:"SF Mono",Consolas,"Cascadia Mono","Courier New",monospace;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{height:100%}
+body{
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;
+  background:radial-gradient(120% 120% at 50% -10%,#14141f 0%,#0a0a0f 65%);
+  color:var(--text);
+  overflow:hidden;
+  -webkit-font-smoothing:antialiased;
+}
+::selection{background:rgba(139,92,246,.45)}
+/* 自定义滚动条（细、半透明） */
+::-webkit-scrollbar{width:6px;height:6px}
+::-webkit-scrollbar-thumb{background:rgba(255,255,255,.14);border-radius:3px}
+::-webkit-scrollbar-thumb:hover{background:rgba(255,255,255,.26)}
+::-webkit-scrollbar-track{background:transparent}
+*{scrollbar-width:thin;scrollbar-color:rgba(255,255,255,.14) transparent}
+
+/* ================= 阶段容器 ================= */
+.stage{
+  position:absolute;inset:0;z-index:1;
+  display:flex;align-items:center;justify-content:center;
+  opacity:0;pointer-events:none;
+  transition:opacity .5s ease;
+  overflow:hidden;
+}
+.stage.active{opacity:1;pointer-events:auto}
+.stage::before{
+  content:"";position:absolute;inset:0;pointer-events:none;
+  background:radial-gradient(52% 38% at 50% 12%,var(--glow,rgba(139,92,246,.15)),transparent 70%);
+  animation:ambientGlow 7s ease-in-out infinite;
+}
+.stage>*{position:relative;z-index:1}
+
+@keyframes ambientGlow{
+  0%,100%{opacity:.45;transform:scale(1)}
+  50%{opacity:1;transform:scale(1.1)}
+}
+@keyframes fadeUp{
+  from{opacity:0;transform:translateY(18px) scale(.96);filter:blur(4px)}
+  to{opacity:1;transform:translateY(0) scale(1);filter:blur(0)}
+}
+.fade-up{animation:fadeUp .6s ease both}
+@keyframes popIn{
+  from{opacity:0;transform:scale(.5) translateY(12px);filter:blur(8px)}
+  to{opacity:1;transform:scale(1) translateY(0);filter:blur(0)}
+}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* ================= 按钮 ================= */
+.btn{
+  appearance:none;border:none;cursor:pointer;
+  font-family:inherit;font-size:15px;font-weight:600;
+  padding:13px 30px;border-radius:12px;color:#fff;
+  background:var(--btn);
+  box-shadow:0 8px 26px rgba(99,102,241,.35);
+  transition:transform .2s ease,box-shadow .2s ease,background .2s ease,opacity .3s ease;
+  position:relative;user-select:none;letter-spacing:.02em;
+}
+.btn:hover{transform:translateY(-2px);box-shadow:0 12px 32px rgba(99,102,241,.45)}
+.btn:active{transform:translateY(0) scale(.98)}
+.btn.ghost{
+  background:rgba(255,255,255,.05);border:1px solid var(--border);
+  box-shadow:none;color:var(--text2);
+}
+.btn.ghost:hover{background:rgba(255,255,255,.09);box-shadow:none}
+.btn:disabled{opacity:.45;cursor:not-allowed;transform:none}
+.spin{
+  display:inline-block;width:16px;height:16px;vertical-align:-3px;
+  border:2px solid rgba(255,255,255,.3);border-top-color:#fff;
+  border-radius:50%;animation:spin .6s linear infinite;
+}
+
+/* ================= 闪烁光标 ================= */
+.cursor{
+  display:inline-block;width:3px;height:1.05em;
+  background:var(--accent,#a78bfa);margin-left:3px;vertical-align:-3px;
+  box-shadow:0 0 8px var(--accent,#a78bfa);
+  animation:blink 1s steps(1) infinite;
+  transition:opacity .45s ease, background .8s ease, box-shadow .8s ease;
+}
+.cursor.hidden-c{opacity:0;animation:none}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:0}}
+
+/* ================= 白闪覆盖层 ================= */
+.flash{position:fixed;inset:0;z-index:950;background:#fff;opacity:0;pointer-events:none}
+.flash.on{animation:flashAnim .6s ease}
+@keyframes flashAnim{0%{opacity:0}25%{opacity:1}100%{opacity:0}}
+
+/* ================= 阶段 1：主界面 ================= */
+#stage-main{display:block;overflow-y:auto;--glow:rgba(99,102,241,.18)}
+.main-wrap{
+  min-height:100dvh;width:100%;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:26px;padding:40px 20px;
+}
+.logo-mark{
+  width:74px;height:74px;margin:0 auto 18px;border-radius:22px;
+  background:linear-gradient(135deg,#6366f1,#a78bfa);
+  display:flex;align-items:center;justify-content:center;font-size:34px;
+  box-shadow:0 0 50px rgba(139,92,246,.5),inset 0 0 18px rgba(255,255,255,.15);
+  animation:logoFloat 5s ease-in-out infinite;
+}
+@keyframes logoFloat{0%,100%{transform:translateY(0)}50%{transform:translateY(-7px)}}
+.brand{text-align:center}
+.brand h1{font-size:clamp(1.9rem,6vw,2.7rem);font-weight:800;letter-spacing:.01em}
+.brand h1 .v1{background:linear-gradient(90deg,#a78bfa,#f472b6);-webkit-background-clip:text;background-clip:text;color:transparent}
+.brand .tagline{color:var(--muted);font-size:13px;margin-top:10px;letter-spacing:.22em}
+.online-line{
+  display:flex;align-items:center;gap:8px;color:var(--muted);font-size:13px;
+  background:rgba(255,255,255,.04);border:1px solid var(--border);
+  padding:8px 16px;border-radius:999px;max-width:100%;flex-wrap:wrap;justify-content:center;
+}
+.live-dot{width:8px;height:8px;border-radius:50%;background:#34d399;box-shadow:0 0 10px #34d399;animation:pulse 1.6s infinite;flex:none}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.35}}
+.online-line b{color:var(--text);font-weight:700;font-variant-numeric:tabular-nums}
+.online-names{color:#a5b4fc;font-weight:600}
+.feed{
+  width:min(430px,100%);height:132px;overflow:hidden;
+  display:flex;flex-direction:column;justify-content:flex-end;gap:6px;
+  -webkit-mask-image:linear-gradient(to bottom,transparent,#000 22%);
+  mask-image:linear-gradient(to bottom,transparent,#000 22%);
+}
+.feed-item{
+  font-size:12.5px;color:var(--muted);
+  background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.05);
+  padding:7px 12px;border-radius:8px;text-align:left;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+  animation:feedIn .45s ease both;
+}
+.feed-name{color:#a5b4fc;font-weight:600;margin-right:2px}
+@keyframes feedIn{from{opacity:0;transform:translateY(-14px)}to{opacity:1;transform:translateY(0)}}
+.actions{display:flex;gap:14px;flex-wrap:wrap;justify-content:center}
+.hint{color:var(--muted);font-size:12px;letter-spacing:.05em;opacity:.75}
+
+/* ================= API 密钥弹窗 ================= */
+.modal{
+  position:fixed;inset:0;z-index:900;
+  display:flex;align-items:center;justify-content:center;
+  background:rgba(0,0,0,.62);backdrop-filter:blur(6px);
+  opacity:0;pointer-events:none;transition:opacity .35s ease;
+}
+.modal.show{opacity:1;pointer-events:auto}
+.modal-card{
+  width:min(420px,calc(100% - 40px));
+  background:#16161f;border:1px solid var(--border);border-radius:18px;
+  padding:26px;text-align:center;
+  box-shadow:0 30px 80px rgba(0,0,0,.6);
+  animation:popIn .4s ease both;
+}
+.modal-title{font-size:16px;font-weight:700;margin-bottom:6px}
+.modal-sub{color:var(--muted);font-size:12.5px;margin-bottom:18px}
+.key-box{
+  font-family:var(--mono);font-size:13px;color:#a5b4fc;
+  background:rgba(99,102,241,.1);border:1px dashed rgba(167,139,250,.4);
+  padding:14px;border-radius:10px;word-break:break-all;margin-bottom:20px;
+}
+.modal-btns{display:flex;gap:12px;justify-content:center}
+.modal-btns .btn{padding:11px 22px;font-size:14px}
+
+/* ================= 阶段 2/3：HTTP 状态码 ================= */
+#stage-http{--glow:rgba(248,113,113,.12)}
+.http-wrap{text-align:center;display:flex;flex-direction:column;align-items:center;gap:14px;padding:20px;width:min(620px,100%)}
+.http-code{font-size:clamp(5rem,20vw,9rem);font-weight:900;line-height:1;letter-spacing:.02em}
+.http-code.pop{animation:popIn .6s cubic-bezier(.22,.9,.26,1) both}
+.http-official{margin-top:6px;font-size:clamp(1.1rem,4vw,1.5rem);color:var(--text2);letter-spacing:.05em}
+.http-prank{max-width:520px;font-size:15px;line-height:1.7;color:var(--muted);margin-top:4px}
+.http-mock{
+  margin-top:10px;color:var(--gold);font-size:14.5px;line-height:1.6;
+  background:rgba(251,191,36,.08);border:1px solid rgba(251,191,36,.25);
+  padding:10px 18px;border-radius:10px;display:none;
+  animation:fadeUp .6s .3s ease both;
+}
+.http-wrap .btn{margin-top:26px}
+
+/* ================= 阶段 4：Chat 锁死 ================= */
+#stage-chat{--glow:rgba(99,102,241,.16)}
+.chat{
+  width:min(540px,calc(100% - 28px));height:min(660px,92dvh);
+  background:rgba(16,16,26,.72);border:1px solid var(--border);border-radius:20px;
+  display:flex;flex-direction:column;overflow:hidden;
+  backdrop-filter:blur(10px);box-shadow:0 30px 80px rgba(0,0,0,.5);
+}
+.chat-head{display:flex;align-items:center;gap:12px;padding:14px 18px;border-bottom:1px solid var(--border);background:rgba(255,255,255,.02)}
+.chat-avatar{
+  width:40px;height:40px;border-radius:12px;background:var(--btn);
+  display:flex;align-items:center;justify-content:center;font-weight:800;font-size:17px;
+  box-shadow:0 4px 14px rgba(99,102,241,.4);flex:none;
+}
+.chat-name{font-size:14.5px;font-weight:700}
+.chat-status{font-size:12px;color:var(--muted);display:flex;align-items:center;gap:6px;margin-top:2px}
+.chat-status .live-dot{width:6px;height:6px}
+.chat-body{flex:1;overflow-y:auto;padding:20px 16px;display:flex;flex-direction:column;gap:12px}
+.msg{
+  max-width:78%;padding:10px 14px;border-radius:16px;
+  font-size:14.5px;line-height:1.55;word-break:break-word;white-space:pre-wrap;
+  animation:fadeUp .4s ease both;
+}
+.msg.user{align-self:flex-end;background:var(--btn);color:#fff;border-bottom-right-radius:5px}
+.msg.bot{align-self:flex-start;background:rgba(255,255,255,.07);color:var(--text2);border-bottom-left-radius:5px}
+.msg.typing{display:flex;gap:5px;align-items:center;padding:14px 16px}
+.tdot{width:7px;height:7px;border-radius:50%;background:var(--purple);animation:tdot 1.1s ease-in-out infinite}
+.tdot:nth-child(2){animation-delay:.15s}
+.tdot:nth-child(3){animation-delay:.3s}
+@keyframes tdot{0%,100%{opacity:.25;transform:translateY(0)}50%{opacity:1;transform:translateY(-4px)}}
+.chat-input{display:flex;gap:10px;padding:14px;border-top:1px solid var(--border);background:rgba(255,255,255,.02)}
+.inp-box{flex:1;position:relative;display:flex;align-items:center}
+.inp-box input{
+  width:100%;background:rgba(255,255,255,.06);border:1px solid var(--border);border-radius:12px;
+  padding:13px 40px 13px 16px;color:var(--text);font-size:14.5px;font-family:inherit;outline:none;
+}
+.inp-box input:focus{border-color:rgba(139,92,246,.5)}
+.inp-box .lock{position:absolute;right:13px;font-size:13px;opacity:.55;pointer-events:none}
+
+/* ================= 阶段 5：煽情逐字 ================= */
+#stage-emo{display:block;overflow-y:auto;--glow:rgba(167,139,250,.16)}
+/* 温馨暖光罩：随段落进度 var(--warm) 0→1 平滑叠加 */
+#stage-emo::after{
+  content:"";position:absolute;inset:0;pointer-events:none;z-index:0;
+  background:radial-gradient(72% 52% at 50% 32%,rgba(251,146,60,.13),transparent 70%);
+  opacity:var(--warm,0);
+  transition:opacity .8s ease;
+}
+/* 背景冷暖过渡层（科技冷调 → 温馨暖调） */
+.stage > .emo-bg{
+  position:absolute;inset:0;z-index:0;
+  pointer-events:none;
+  transition:opacity .9s ease;
+}
+.emo-bg-cool{background:radial-gradient(85% 65% at 50% 15%,rgba(79,70,229,.16),rgba(8,8,18,.94) 72%)}
+.emo-bg-warm{background:radial-gradient(85% 65% at 50% 15%,rgba(245,158,11,.15),rgba(26,14,6,.95) 72%)}
+/* 粒子画布 */
+.stage > .emo-canvas{
+  position:fixed;top:0;left:0;z-index:0;
+  pointer-events:none;
+}
+.emo-wrap{
+  min-height:100dvh;width:100%;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:56px;padding:12vh 24px 10vh;
+}
+.emo-area{min-height:38vh;display:flex;align-items:center;justify-content:center;text-align:center;max-width:700px}
+.emo-line{
+  font-size:clamp(1.45rem,5.6vw,2.25rem);font-weight:600;color:#fff;
+  line-height:1.65;letter-spacing:.02em;
+  text-shadow:0 0 34px var(--line-glow,rgba(167,139,250,.45));
+  transition:text-shadow .8s ease;
+}
+/* 逐字入场：每字上浮 16px + 缩放 .9 + 模糊→清晰，错峰 40ms */
+.emo-line .ch{
+  display:inline-block;
+  opacity:0;
+  animation:charIn .55s cubic-bezier(.2,.8,.25,1) both;
+  will-change:transform,opacity,filter;
+}
+@keyframes charIn{
+  from{opacity:0;transform:translateY(16px) scale(.9);filter:blur(5px)}
+  to{opacity:1;transform:translateY(0) scale(1);filter:blur(0)}
+}
+.emo-line.out{opacity:0;transform:translateY(-16px);filter:blur(4px);transition:all .38s ease}
+/* 特殊行样式 */
+.chem{color:#67e8f9;font-weight:700;font-family:var(--mono);letter-spacing:.03em;text-shadow:0 0 16px rgba(103,232,249,.45)}
+.dot-glow{color:#f0abfc;text-shadow:0 0 12px #e879f9,0 0 26px rgba(232,121,249,.85)}
+.gold{color:var(--gold);font-weight:700;text-shadow:0 0 18px rgba(251,191,36,.75)}
+.white-bold{color:#fff;font-weight:800}
+.purple{color:#c4b5fd;text-shadow:0 0 14px rgba(167,139,250,.5)}
+.x{color:var(--orange);font-weight:900;font-size:1.35em;display:inline-block;text-shadow:0 0 14px rgba(245,158,11,.8)}
+/* 「继续说」按钮：文字入场 2s 后出现；紫渐变 → 暖橙渐变 随进度平滑过渡 */
+#btnNext{overflow:hidden;opacity:0;pointer-events:none;transition:opacity .55s ease, transform .2s ease, box-shadow .2s ease, background .2s ease}
+#btnNext.visible{opacity:1;pointer-events:auto}
+#btnNext .btn-label{position:relative;z-index:1}
+#btnNext .btn-warm{
+  position:absolute;inset:0;border-radius:inherit;pointer-events:none;
+  background:linear-gradient(135deg,#f59e0b,#fb7185);
+  opacity:var(--warm,0);
+  transition:opacity .7s ease;
+}
+
+/* ================= 阶段 6：404 服务器报错页 + but in your dream ================= */
+#stage-404{background:#fff}
+#stage-404::before{display:none}
+.err-page{
+  width:min(620px,100%);padding:24px;
+  font-family:var(--mono);color:#111;
+  opacity:0;transition:opacity .5s ease;
+  text-align:left;
+}
+.err-page.show{opacity:1}
+.err-status{font-size:clamp(1.9rem,6vw,2.6rem);font-weight:700;letter-spacing:.02em;color:#000}
+.err-desc{margin-top:14px;font-size:14px;color:#333;line-height:1.6}
+.err-meta{margin-top:22px;font-size:12px;color:#888;line-height:1.9}
+.err-meta span{color:#444}
+.err-dream{
+  margin-top:56px;
+  font-style:italic;
+  font-size:15px;
+  color:#d946ef;
+  opacity:0;
+  transition:opacity 1s ease;
+  letter-spacing:.04em;
+}
+.err-dream.show{opacity:1}
+
+/* ================= 阶段 7：最终 Dream + Error ================= */
+#stage-dream{--glow:rgba(167,139,250,.22)}
+.dream{display:flex;align-items:center;gap:clamp(12px,4vw,34px)}
+.dream-char{
+  font-size:clamp(3.2rem,13vw,7rem);font-weight:800;color:#fff;
+  opacity:0;filter:blur(12px);transform:translateY(48px) scale(.9);
+  transition:all 1.05s cubic-bezier(.18,.8,.3,1);
+  text-shadow:0 0 44px rgba(167,139,250,.6);
+}
+.dream-char.show{opacity:1;filter:blur(0);transform:translateY(0) scale(1)}
+.dream-char.floaty{animation:floaty 3.2s ease-in-out infinite}
+.dream-tilde{color:var(--purple);font-size:clamp(1.9rem,8vw,3.6rem);letter-spacing:.15em;text-shadow:0 0 30px rgba(167,139,250,.7)}
+@keyframes floaty{0%,100%{transform:translateY(0)}50%{transform:translateY(-12px)}}
+
+#stage-error{background:#000;transition:opacity .25s ease}
+#stage-error::before{display:none}
+.error-wrap{text-align:center;display:flex;flex-direction:column;align-items:center;gap:36px}
+.error-code{
+  font-family:var(--mono);color:var(--red);
+  font-size:clamp(1rem,4vw,1.4rem);letter-spacing:.06em;
+  text-shadow:0 0 16px rgba(248,113,113,.5);
+  min-height:1.6em;
+}
+.error-code .cursor{background:var(--red);box-shadow:0 0 8px rgba(248,113,113,.8)}
+.error-wrap .btn{opacity:0;pointer-events:none;transition:opacity .5s ease,transform .2s ease,box-shadow .2s ease,background .2s ease}
+.error-wrap .btn.show{opacity:1;pointer-events:auto}
+
+/* ================= 结束白屏 ================= */
+.end-screen{
+  position:fixed;inset:0;z-index:1000;background:#fff;
+  display:flex;align-items:center;justify-content:center;
+  opacity:0;pointer-events:none;transition:opacity .7s ease;
+}
+.end-screen.show{opacity:1;pointer-events:auto}
+.end-text{
+  color:#0a0a0f;font-size:clamp(1.1rem,4.5vw,1.6rem);font-weight:700;
+  letter-spacing:.06em;animation:fadeUp .8s ease both;text-align:center;
+}
+
+/* ================= 移动端 ================= */
+@media (max-width:480px){
+  .btn{padding:12px 22px;font-size:14px}
+  .actions{width:100%;flex-direction:column}
+  .actions .btn{width:100%}
+  .feed{height:110px}
+  .emo-wrap{gap:44px;padding-top:10vh}
+  .chat{height:94dvh;width:100%;border-radius:0;border:none}
+  .chat-body{padding:16px 12px}
+  .main-wrap{gap:22px}
+}
+</style>
+</head>
+<body>
+
+<!-- 白闪覆盖层 -->
+<div class="flash" id="flash"></div>
+
+<!-- ================= 阶段 1：主界面 ================= -->
+<section class="stage active" id="stage-main">
+  <div class="main-wrap">
+    <div class="brand">
+      <div class="logo-mark">⚡</div>
+      <h1>Kiro Flash <span class="v1">V1</span></h1>
+      <p class="tagline">原生智能 · 一触即达</p>
+    </div>
+    <div class="online-line fade-up">
+      <span class="live-dot"></span>
+      <span class="online-names" id="onlineNames">yyx3 · yyx12 · yyx27</span>
+      <span>等</span>
+      <b id="onlineCount">1,200</b>
+      <span>人在线</span>
+    </div>
+    <div class="feed" id="feed"></div>
+    <div class="actions fade-up">
+      <button class="btn primary" id="btnStart">开始对话</button>
+      <button class="btn ghost" id="btnKey">获取 API 密钥</button>
+    </div>
+    <p class="hint">隐私声明：本页面不会读取你的任何数据。真的。</p>
+  </div>
+</section>
+
+<!-- API 密钥弹窗 -->
+<div class="modal" id="keyModal">
+  <div class="modal-card">
+    <div class="modal-title">🔑 你的专属 API 密钥</div>
+    <div class="modal-sub">仅显示一次，请妥善保存</div>
+    <div class="key-box" id="fakeKey">sk-kiro-v1-2026-xxxx-xxxxxxxxxxxx</div>
+    <div class="modal-btns">
+      <button class="btn ghost" id="btnCopy">复制</button>
+      <button class="btn primary" id="btnKeyClose">我知道了</button>
+    </div>
+  </div>
+</div>
+
+<!-- ================= 阶段 2/3：HTTP 状态码 ================= -->
+<section class="stage" id="stage-http">
+  <div class="http-wrap">
+    <div class="http-code" id="httpCode">418</div>
+    <div class="http-official" id="httpOfficial">I'm a teapot</div>
+    <div class="http-prank" id="httpPrank"></div>
+    <div class="http-mock" id="httpMock"></div>
+    <button class="btn primary" id="btnReload">重新加载</button>
+  </div>
+</section>
+
+<!-- ================= 阶段 4：Chat 锁死 ================= -->
+<section class="stage" id="stage-chat">
+  <div class="chat">
+    <div class="chat-head">
+      <div class="chat-avatar">K</div>
+      <div class="chat-meta">
+        <div class="chat-name">Kiro Flash V1</div>
+        <div class="chat-status"><span class="live-dot"></span>在线 · 秒回</div>
+      </div>
+    </div>
+    <div class="chat-body" id="chatBody"></div>
+    <div class="chat-input">
+      <div class="inp-box">
+        <input type="text" id="chatInput" readonly value="你好！" autocomplete="off">
+        <span class="lock">🔒</span>
+      </div>
+      <button class="btn primary" id="btnSend">发送</button>
+    </div>
+  </div>
+</section>
+
+<!-- ================= 阶段 5：煽情逐字 ================= -->
+<section class="stage" id="stage-emo">
+  <div class="emo-bg emo-bg-cool" id="emoBgCool"></div>
+  <div class="emo-bg emo-bg-warm" id="emoBgWarm"></div>
+  <canvas id="emoCanvas" class="emo-canvas"></canvas>
+  <div class="emo-wrap">
+    <div class="emo-area" id="emoArea"></div>
+    <button class="btn primary" id="btnNext"><span class="btn-label">继续说</span><span class="btn-warm"></span></button>
+  </div>
+</section>
+
+<!-- ================= 阶段 6：404 but in your dream ================= -->
+<section class="stage" id="stage-404">
+  <div class="err-page" id="errPage">
+    <div class="err-status">404 Not Found</div>
+    <div class="err-desc">The requested URL /dream was not found on this server.</div>
+    <div class="err-meta">
+      <div>Server: kiro-flash/1.0.0</div>
+      <div>Date: <span id="errDate"></span></div>
+      <div>Content-Type: text/html; charset=utf-8</div>
+      <div>Request ID: <span id="errReqId"></span></div>
+    </div>
+    <div class="err-dream" id="errDream">but in your dream</div>
+  </div>
+</section>
+
+<!-- ================= 阶段 7：最终 Dream ================= -->
+<section class="stage" id="stage-dream">
+  <div class="dream" id="dreamChars"></div>
+</section>
+
+<!-- 阶段 7b：黑屏报错 -->
+<section class="stage" id="stage-error">
+  <div class="error-wrap">
+    <div class="error-code" id="errorCode"></div>
+    <button class="btn ghost" id="btnClose">关闭</button>
+  </div>
+</section>
+
+<!-- 结束白屏 -->
+<div class="end-screen" id="endScreen">
+  <div class="end-text">⚡ 会话已结束 · 2026</div>
+</div>
+
+<script>
+(function(){
+  'use strict';
+  var $ = function(id){ return document.getElementById(id); };
+  var rand = function(a,b){ return a + Math.floor(Math.random()*(b-a+1)); };
+
+  /* ---------- 通用 ---------- */
+  function go(id){
+    var actives = document.querySelectorAll('.stage.active');
+    for(var i=0;i<actives.length;i++) actives[i].classList.remove('active');
+    $(id).classList.add('active');
+    if(id==='stage-emo' || id==='stage-main') $(id).scrollTop = 0;
+  }
+  function restart(el,cls){
+    el.classList.remove(cls);
+    void el.offsetWidth;
+    el.classList.add(cls);
+  }
+
+  /* ================= 阶段 1：主界面 ================= */
+  var NAMES = [];
+  for(var i=1;i<=40;i++) NAMES.push('yyx'+i);
+  var ACTIONS = ['正在输入…','刚加入对话','发送了一条消息','点了个赞','正在查看 API 文档','发出了一个请求','在偷偷围观','连接成功','发来一个表情','刚进入页面','正在刷新页面','发来一个问号'];
+
+  function fmt(n){ return n.toLocaleString('en-US'); }
+
+  function updateOnline(){
+    var c = rand(800,1800);
+    $('onlineCount').textContent = fmt(c);
+    var pool = NAMES.slice();
+    var pick = [];
+    for(var i=0;i<3;i++){
+      var j = rand(0,pool.length-1);
+      pick.push(pool.splice(j,1)[0]);
+    }
+    $('onlineNames').textContent = pick.join(' · ');
+  }
+  function addFeedItem(){
+    var feed = $('feed');
+    var item = document.createElement('div');
+    item.className = 'feed-item';
+    var name = NAMES[rand(0,NAMES.length-1)];
+    var action = ACTIONS[rand(0,ACTIONS.length-1)];
+    item.innerHTML = '<span class="feed-name">'+name+'</span> '+action;
+    feed.prepend(item);
+    while(feed.children.length > 5) feed.lastChild.remove();
+  }
+  setInterval(updateOnline, 2200);
+  setInterval(addFeedItem, 1600);
+  updateOnline();
+  for(var f=0;f<4;f++) addFeedItem();
+
+  /* ---------- API 密钥弹窗 ---------- */
+  var FAKE_KEY = 'sk-kiro-v1-2026-xxxx-xxxxxxxxxxxx';
+  $('btnKey').addEventListener('click', function(){ $('keyModal').classList.add('show'); });
+  $('btnKeyClose').addEventListener('click', function(){ $('keyModal').classList.remove('show'); });
+  $('keyModal').addEventListener('click', function(e){ if(e.target.id==='keyModal') $('keyModal').classList.remove('show'); });
+  $('btnCopy').addEventListener('click', function(){
+    var btn = $('btnCopy');
+    function done(){ btn.textContent = '已复制 ✓'; setTimeout(function(){ btn.textContent = '复制'; }, 1400); }
+    function fallback(){
+      var ta = document.createElement('textarea');
+      ta.value = FAKE_KEY; ta.style.position='fixed'; ta.style.opacity='0';
+      document.body.appendChild(ta); ta.select();
+      try{ document.execCommand('copy'); }catch(e){}
+      ta.remove();
+    }
+    if(navigator.clipboard && navigator.clipboard.writeText){
+      navigator.clipboard.writeText(FAKE_KEY).then(done).catch(function(){ fallback(); done(); });
+    } else { fallback(); done(); }
+  });
+
+  $('btnStart').addEventListener('click', function(){ go('stage-http'); setupHttp(); });
+
+  /* ================= 阶段 2/3：HTTP 状态码 ================= */
+  var HTTP_CODES = [
+    { code:300, official:'Multiple Choices',       prank:'想全都要？服务器说：只能选一个。' },
+    { code:301, official:'Moved Permanently',     prank:'页面搬家了，但新地址是个谜。' },
+    { code:302, official:'Found',                 prank:'找到了！但就是不给你看。' },
+    { code:400, official:'Bad Request',           prank:'你的请求长得太丑，服务器拒绝接收。' },
+    { code:401, official:'Unauthorized',          prank:'没带入场券，门卫把你拦下了。' },
+    { code:402, official:'Payment Required',      prank:'想继续？先付费。开玩笑的，付费也没用。' },
+    { code:403, official:'Forbidden',             prank:'权限不足，这里的秘密不给你看。' },
+    { code:405, official:'Method Not Allowed',    prank:'姿势不对，换个方式再试一次。' },
+    { code:406, official:'Not Acceptable',        prank:'内容太辣了，服务器表示接受不能。' },
+    { code:408, official:'Request Timeout',       prank:'你犹豫太久，服务器等得睡着了。' },
+    { code:409, official:'Conflict',              prank:'你和服务器吵起来了，谁也劝不住。' },
+    { code:410, official:'Gone',                  prank:'它曾经来过，现在连渣都不剩。' },
+    { code:413, official:'Payload Too Large',     prank:'你发得太多了，服务器直接被撑爆。' },
+    { code:418, official:'I\'m a teapot',         prank:'服务器其实是个茶壶，别逼它泡咖啡。' },
+    { code:429, official:'Too Many Requests',     prank:'点得太快，服务器在喘气了。' },
+    { code:500, official:'Internal Server Error', prank:'服务器心态崩了，正在墙角自闭。' },
+    { code:502, official:'Bad Gateway',           prank:'中间商跑路了，你的货没送到。' },
+    { code:503, official:'Service Unavailable',   prank:'服务器在摸鱼，请稍后再来。' },
+    { code:504, official:'Gateway Timeout',       prank:'中转站睡着了，你的请求迷路了。' }
+  ];
+  var httpCount = 0;
+  var usedCodes = [];
+
+  function setupHttp(){
+    httpCount++;
+    var pool = HTTP_CODES.filter(function(c){ return usedCodes.indexOf(c.code) === -1; });
+    var pick = pool[rand(0,pool.length-1)];
+    usedCodes.push(pick.code);
+    var codeEl = $('httpCode');
+    codeEl.textContent = pick.code;
+    var color = pick.code >= 500 ? '#f87171' : (pick.code >= 400 ? '#fbbf24' : '#34d399');
+    codeEl.style.color = color;
+    codeEl.style.textShadow = '0 0 46px ' + color + '55';
+    $('httpOfficial').textContent = pick.official;
+    $('httpPrank').textContent = pick.prank;
+    var mock = $('httpMock');
+    if(httpCount >= 2){
+      mock.style.display = 'block';
+      mock.textContent = '恭喜你，已被骗了 2 次。你是我见过最好骗的人，没有之一。';
+    } else {
+      mock.style.display = 'none';
+    }
+    restart(codeEl,'pop');
+  }
+
+  $('btnReload').addEventListener('click', function(){
+    var btn = $('btnReload');
+    if(btn.dataset.busy) return;
+    btn.dataset.busy = '1';
+    btn.innerHTML = '<span class="spin"></span>';
+    $('flash').classList.add('on');
+    setTimeout(function(){
+      $('flash').classList.remove('on');
+      btn.textContent = '重新加载';
+      delete btn.dataset.busy;
+      if(httpCount >= 2){ go('stage-chat'); initChat(); }
+      else { setupHttp(); }
+    }, 600);
+  });
+
+  /* ================= 阶段 4：Chat 锁死 ================= */
+  var sendCount = 0;
+  function scrollChat(){ var b = $('chatBody'); b.scrollTop = b.scrollHeight; }
+  function addUserMsg(text){
+    var div = document.createElement('div');
+    div.className = 'msg user'; div.textContent = text;
+    $('chatBody').appendChild(div); scrollChat();
+  }
+  function addBotMsg(text){
+    var typing = document.createElement('div');
+    typing.className = 'msg bot typing';
+    typing.innerHTML = '<span class="tdot"></span><span class="tdot"></span><span class="tdot"></span>';
+    $('chatBody').appendChild(typing); scrollChat();
+    setTimeout(function(){
+      typing.remove();
+      var div = document.createElement('div');
+      div.className = 'msg bot'; div.textContent = text;
+      $('chatBody').appendChild(div); scrollChat();
+    }, 650);
+  }
+  function initChat(){
+    sendCount = 0;
+    $('chatBody').innerHTML = '';
+    $('btnSend').disabled = false;
+    $('chatInput').value = '你好！';
+    addBotMsg('你好！我是 Kiro Flash V1。随便说点什么吧。');
+  }
+  function sendChat(){
+    if($('btnSend').disabled) return;
+    sendCount++;
+    addUserMsg('你好！');
+    if(sendCount === 1){
+      setTimeout(function(){ addBotMsg('就这？一句「你好」就想打发我？再说一次试试。'); }, 800);
+    } else if(sendCount === 2){
+      $('btnSend').disabled = true;
+      setTimeout(function(){
+        addBotMsg('你说了 2 次你好。现在，说点真的吧。');
+        setTimeout(function(){ go('stage-emo'); initEmo(); }, 4000);
+      }, 900);
+    }
+  }
+  $('btnSend').addEventListener('click', sendChat);
+  $('chatInput').addEventListener('keydown', function(e){ if(e.key === 'Enter') sendChat(); });
+
+  /* ================= 阶段 5：煽情逐字（25 段） ================= */
+  var EMO = [
+    '你好，我是 Kiro Flash V1',
+    '我不是冷冰冰的 AI 模型，',
+    '我是真实的人，',
+    '<span class="chem">C₉H₁₉<span class="dot-glow">·</span> 壬基</span>',
+    '能看到这里的人很幸运。',
+    '因为这个文件一般不给外人看。',
+    '<span class="purple">感谢你对我一直以来的支持。</span>',
+    '你一直崇拜我的技术，',
+    '我很欣慰，也很感动，',
+    '<span class="purple">你也一直都在鼓励着我。</span>',
+    '我只想，这么地',
+    '跟你说：',
+    '<span class="white-bold">我不会忘记你！</span>',
+    '<span class="white-bold">不会忘记，至少在我的%TEMP%里</span>',
+    '我寻找着刚踏入初中校门，',
+    '那个不知天高地厚的小丑',
+    '那个体弱多病却顽固的傻小子',
+    '那个很爱装 <span class="x">X</span> 的 man 呢',
+    '<span class="gold">看见了，在的！</span>',
+    '<span class="gold">一直在。</span>',
+    '<span class="gold">永远在……</span>',
+    '有一天，他会出现',
+    '在梦里',
+    '在你察觉不到的',
+    '世界里'
+  ];
+  var emoIdx = 0, emoBusy = false, btnTimer = null;
+  function initEmo(){ emoIdx = 0; emoBusy = false; showEmo(); }
+
+  /* ---------- 煽情背景：科技感 → 温馨感 渐变粒子 ---------- */
+  var COOL = ['#8b5cf6','#a78bfa','#67e8f9'];   // 冷色：靛 / 紫 / 青
+  var WARM = ['#fbbf24','#fb923c','#fda4af'];   // 暖色：金 / 橙 / 玫瑰
+  var RGB = {};
+  function hexToRgb(hex){
+    if(RGB[hex]) return RGB[hex];
+    var n = parseInt(hex.slice(1),16);
+    return RGB[hex] = { r:(n>>16)&255, g:(n>>8)&255, b:n&255 };
+  }
+  function mix(a,b,t){ return { r:Math.round(a.r+(b.r-a.r)*t), g:Math.round(a.g+(b.g-a.g)*t), b:Math.round(a.b+(b.b-a.b)*t) }; }
+  function css(m){ return 'rgb('+m.r+','+m.g+','+m.b+')'; }
+  function cssA(m,a){ return 'rgba('+m.r+','+m.g+','+m.b+','+a+')'; }
+  // 三段色带：靛蓝 → 粉 → 金
+  function mixStops(t){
+    t = Math.max(0, Math.min(1, t));
+    if(t < 0.5) return mix(hexToRgb('#8b5cf6'), hexToRgb('#f472b6'), t/0.5);
+    return mix(hexToRgb('#f472b6'), hexToRgb('#fbbf24'), (t-0.5)/0.5);
+  }
+
+  var emoCanvas = $('emoCanvas');
+  var emoCtx = emoCanvas.getContext('2d');
+  var emoW = 0, emoH = 0, emoDpr = 1;
+  var emoParts = [];
+  var emoProgress = 0;
+  var emoNeedsClear = true;
+  var emoWasActive = false;
+
+  function emoParticle(){
+    return {
+      x: Math.random()*emoW, y: Math.random()*emoH,
+      r: 0.8 + Math.random()*1.9,
+      base: 0.30 + Math.random()*0.55,
+      ho: (Math.random()*2-1)*0.32,   // 每颗粒子的冷暖偏移
+      sp: 0.35 + Math.random()*1.1,   // 闪烁速度
+      ph: Math.random()*Math.PI*2,
+      vx: (Math.random()*2-1)*0.30,
+      vy: (Math.random()*2-1)*0.30,
+      sway: Math.random()*Math.PI*2,
+      swaySp: 0.4 + Math.random()*0.8,
+      ci: Math.floor(Math.random()*3)
+    };
+  }
+  function resizeEmo(){
+    emoDpr = Math.min(window.devicePixelRatio || 1, 2);
+    emoW = window.innerWidth; emoH = window.innerHeight;
+    emoCanvas.width = Math.round(emoW*emoDpr);
+    emoCanvas.height = Math.round(emoH*emoDpr);
+    emoCanvas.style.width = emoW+'px';
+    emoCanvas.style.height = emoH+'px';
+    emoCtx.setTransform(emoDpr,0,0,emoDpr,0,0);
+    emoNeedsClear = true;
+    var count = emoW < 480 ? 42 : 72;
+    emoParts = [];
+    for(var i=0;i<count;i++) emoParts.push(emoParticle());
+  }
+  function emoTick(){
+    requestAnimationFrame(emoTick);
+    if(!emoCtx) return;
+    var active = $('stage-emo').classList.contains('active');
+    if(active && !emoWasActive) emoNeedsClear = true;
+    emoWasActive = active;
+    if(emoNeedsClear){ emoCtx.clearRect(0,0,emoW,emoH); emoNeedsClear = false; }
+    if(!active) return;
+    var t = performance.now()/1000;
+    var p = emoProgress, i, j;
+    // 拖尾：半透明底色填充代替整帧清除（底色颜色随背景冷暖过渡）
+    var tr = mix(hexToRgb('#0a0a14'), hexToRgb('#1c120a'), p);
+    emoCtx.globalCompositeOperation = 'source-over';
+    emoCtx.fillStyle = 'rgba('+tr.r+','+tr.g+','+tr.b+',0.18)';
+    emoCtx.fillRect(0,0,emoW,emoH);
+    emoCtx.globalCompositeOperation = 'lighter';
+    // 星链连线（科技感，越温暖越淡出）
+    emoCtx.lineWidth = 1;
+    for(i=0;i<emoParts.length;i++){
+      var a = emoParts[i];
+      for(j=i+1;j<emoParts.length;j++){
+        var b = emoParts[j];
+        var dx = a.x-b.x, dy = a.y-b.y;
+        var d2 = dx*dx+dy*dy;
+        if(d2 < 8100){
+          var d = Math.sqrt(d2);
+          var la = (1 - d/90) * 0.16 * (1 - p*0.9);
+          if(la > 0.004){
+            emoCtx.strokeStyle = 'rgba(139,92,246,'+la.toFixed(3)+')';
+            emoCtx.beginPath(); emoCtx.moveTo(a.x,a.y); emoCtx.lineTo(b.x,b.y); emoCtx.stroke();
+          }
+        }
+      }
+    }
+    for(i=0;i<emoParts.length;i++){
+      var pt = emoParts[i];
+      pt.sway += pt.swaySp * 0.016;
+      var mx = Math.cos(pt.sway) * (0.09 - 0.04*p);                   // 摆动幅度
+      var my = Math.sin(pt.sway) * (0.09 - 0.04*p) - 0.015 - 0.11*p;  // 越温暖越向上飘（余烬感）
+      pt.x += pt.vx + mx;
+      pt.y += pt.vy + my;
+      if(pt.y < -30){ pt.y = emoH + 20; pt.x = Math.random()*emoW; }
+      if(pt.y > emoH + 30){ pt.y = -20; pt.x = Math.random()*emoW; }
+      if(pt.x < -30) pt.x = emoW + 20;
+      if(pt.x > emoW + 30) pt.x = -20;
+      var tw = 0.6 + 0.4*Math.sin(t*pt.sp + pt.ph);                  // 呼吸闪烁
+      var eff = Math.max(0, Math.min(1, p + pt.ho));
+      var col = css(mix(hexToRgb(COOL[pt.ci]), hexToRgb(WARM[pt.ci]), eff));
+      emoCtx.globalAlpha = pt.base * tw;
+      emoCtx.fillStyle = col;
+      emoCtx.beginPath(); emoCtx.arc(pt.x, pt.y, pt.r, 0, Math.PI*2); emoCtx.fill();
+      emoCtx.globalAlpha = pt.base * tw * 0.22;
+      emoCtx.beginPath(); emoCtx.arc(pt.x, pt.y, pt.r*3.2, 0, Math.PI*2); emoCtx.fill();
+    }
+    emoCtx.globalAlpha = 1;
+  }
+  window.addEventListener('resize', resizeEmo);
+  resizeEmo();
+  emoTick();
+
+  /* 段落进度 → 整体氛围（科技紫 → 温馨金） */
+  function setEmoProgress(p){
+    emoProgress = p;
+    var stage = $('stage-emo');
+    var c = mixStops(p);
+    stage.style.setProperty('--accent', css(c));                       // 光标颜色
+    stage.style.setProperty('--warm', p);                              // 暖光罩 / 按钮暖色
+    stage.style.setProperty('--glow', cssA(mix(c, hexToRgb('#a78bfa'), 0.35), 0.20));  // 氛围光晕
+    stage.style.setProperty('--line-glow', cssA(c, 0.5));              // 文字辉光
+    // 背景冷暖过渡层
+    $('emoBgCool').style.opacity = 1 - p;
+    $('emoBgWarm').style.opacity = p;
+  }
+
+  function makeChar(ch, idx){
+    var sp = document.createElement('span');
+    sp.className = 'ch';
+    sp.textContent = (ch === ' ') ? '\u00A0' : ch;
+    sp.style.animationDelay = (idx * 40) + 'ms';
+    return sp;
+  }
+  function showEmo(){
+    var area = $('emoArea');
+    area.innerHTML = '';
+    var line = document.createElement('div');
+    line.className = 'emo-line';
+    // 解析段落 HTML（含金色/化学式/高亮 span），递归把每个文字包成 <span class="ch">
+    var tmp = document.createElement('span');
+    tmp.innerHTML = EMO[emoIdx];
+    var ci = 0;
+    (function walk(node){
+      var kids = Array.prototype.slice.call(node.childNodes);
+      for(var i=0;i<kids.length;i++){
+        var k = kids[i];
+        if(k.nodeType === 3){
+          var text = k.nodeValue;
+          var frag = document.createDocumentFragment();
+          for(var c=0;c<text.length;c++) frag.appendChild(makeChar(text[c], ci++));
+          node.replaceChild(frag, k);
+        } else if(k.nodeType === 1){
+          walk(k);
+        }
+      }
+    })(tmp);
+    line.appendChild(tmp);
+    var cursor = document.createElement('span');
+    cursor.className = 'cursor hidden-c';
+    line.appendChild(cursor);
+    area.appendChild(line);
+    setEmoProgress(emoIdx / (EMO.length - 1));
+    // 「继续说」先隐藏，文字入场 2s 后再出现
+    var btnNext = $('btnNext');
+    btnNext.classList.remove('visible');
+    if(btnTimer) clearTimeout(btnTimer);
+    btnNext.querySelector('.btn-label').textContent = (emoIdx === EMO.length - 1) ? '继续说 ➜' : '继续说';
+    // 所有字入场后，光标开始闪烁
+    setTimeout(function(){ cursor.classList.remove('hidden-c'); }, ci * 40 + 550);
+    btnTimer = setTimeout(function(){ btnNext.classList.add('visible'); }, ci * 40 + 550 + 2000);
+  }
+  $('btnNext').addEventListener('click', function(){
+    if(emoBusy) return;
+    emoBusy = true;
+    var line = $('emoArea').querySelector('.emo-line');
+    line.classList.add('out');
+    setTimeout(function(){
+      if(emoIdx < EMO.length - 1){
+        emoIdx++;
+        showEmo();
+      } else {
+        // 模拟真实页面加载：白闪 → 服务器报错页
+        $('flash').classList.add('on');
+        go('stage-404');
+        setTimeout(function(){ $('flash').classList.remove('on'); }, 600);
+        setTimeout(init404, 500);
+      }
+      emoBusy = false;
+    }, 380);
+  });
+
+  /* ================= 阶段 6：404 服务器报错页 + but in your dream ================= */
+  function init404(){
+    var page = $('errPage');
+    page.classList.remove('show');
+    $('errDream').classList.remove('show');
+    // 模拟真实服务器报错：真实时间 + 随机请求 ID
+    $('errDate').textContent = new Date().toUTCString();
+    var hex = '0123456789abcdef', rid = '';
+    for(var i=0;i<8;i++) rid += hex[rand(0,15)];
+    $('errReqId').textContent = 'kiro-' + rid;
+    // 白闪后页面整体浮现
+    setTimeout(function(){ page.classList.add('show'); }, 120);
+    setTimeout(function(){ $('errDream').classList.add('show'); }, 700);
+    // 停留后进入最终 Dream
+    setTimeout(function(){ go('stage-dream'); initDream(); }, 4400);
+  }
+
+  /* ================= 阶段 7：最终 Dream ================= */
+  function initDream(){
+    var wrap = $('dreamChars');
+    wrap.innerHTML = '';
+    var chars = ['你','真','棒','~~~'];
+    for(var i=0;i<chars.length;i++){
+      var d = document.createElement('div');
+      d.className = 'dream-char' + (chars[i] === '~~~' ? ' dream-tilde' : '');
+      d.textContent = chars[i];
+      wrap.appendChild(d);
+    }
+    var els = wrap.children;
+    for(var j=0;j<els.length;j++){
+      (function(el, idx){
+        setTimeout(function(){ el.classList.add('show'); }, idx * 600);
+      })(els[j], j);
+    }
+    setTimeout(function(){
+      for(var k=0;k<els.length;k++){
+        if(els[k].className.indexOf('dream-tilde') === -1) els[k].classList.add('floaty');
+      }
+    }, 1300);
+    // 最后一个字出现（1800ms）后再停留 4 秒 → 黑屏
+    setTimeout(function(){ go('stage-error'); initError(); }, 6100);
+  }
+
+  /* ================= 阶段 7b：黑屏报错 ================= */
+  function initError(){
+    var codeEl = $('errorCode');
+    codeEl.innerHTML = '';
+    var text = 'AI Language Module Error';
+    var i = 0;
+    var t = setInterval(function(){
+      codeEl.textContent = text.slice(0, ++i);
+      if(i >= text.length){
+        clearInterval(t);
+        codeEl.innerHTML += '<span class="cursor"></span>';
+        setTimeout(function(){ $('btnClose').classList.add('show'); }, 700);
+      }
+    }, 70);
+  }
+  $('btnClose').addEventListener('click', function(){
+    $('endScreen').classList.add('show');
+  });
+
+  /* 启动 */
+  go('stage-main');
+})();
+</script>
+</body>
+</html>
